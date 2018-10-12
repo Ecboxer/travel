@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+	<meta charset="utf-8">
+	<title>Travel Survey</title>
+	<script src="d3/d3.js" charset="utf-8"></script>
+    </head>
+    <body>
+	<script type="text/javascript">
+
+	 //Display specs
+	 var margin = {top: 10, right: 10, bottom: 10, left: 10};
+	 var width = window.innerWidth - margin.left - margin.right;
+	 var height = window.innerHeight - margin.top - margin.bottom;
+
+	 d3.csv("resources/sentTip.csv", function (d) {
+	     return { tip: d.tip,
+		      tip_pr: d.tip_pr,
+		      tip_pol: d.tip_pol,
+		      tip_sub: d.tip_sub
+	     };
+	 }).then(function (data) {
+
+	     //Scale for subjectivity to degree radians
+	     var polScale = d3.scaleLinear()
+			      .domain([-1, 1])
+			      .range([0, Math.PI * 2]);
+
+	     //Scale for polarity to height
+	     var subScale = d3.scaleLinear()
+			      .domain([0, 1])
+			      .range([0, height / 3]);
+
+	     var container = d3.select("body")
+			       .append("svg")
+			       .attr("width", width + margin.left + margin.right)
+			       .attr("height", height + margin.top + margin.bottom)
+			       .append("g")
+			       .attr("transform", "translate(" + margin.left + width / 2 + "," + margin.top + height / 2 ")");
+
+	     var linefunction = d3.svg.
+	     var line1 = container.selectAll("path")
+				  .data(data)
+				  .enter()
+				  .append("path")
+	     .attr
+	     
+	 });
+
+	 //'Polar' coordinate system with sent as degree and pol as height, or switch?
+	 //pol in [-1, 1], subj in [0, 1]
+	 // (0, 0) to (subscale - pi/64, polscale) arc to (subscale + pi/64, polscale)
+	 //tf-idf bar chart?
+	</script>
+    </body>
+</html>
