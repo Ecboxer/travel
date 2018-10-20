@@ -9,7 +9,7 @@
 	<script type="text/javascript">
 
 	 //Display specs
-	 var margin = {top: 10, right: 10, bottom: 10, left: 10};
+	 var margin = {top: 75, right: 50, bottom: 75, left: 50};
 	 var width = window.innerWidth - margin.left - margin.right;
 	 var height = window.innerHeight - margin.top - margin.bottom;
 
@@ -31,26 +31,470 @@
 			      .domain([0, 1])
 			      .range([0, height / 3]);
 
+	     //Scale for subjectivity to color [double encoding]
+	     var polColor = d3.scaleSequential(d3.interpolateInferno)
+			      .domain([-1, 1]);
+
+	     //Format tooltip numbers
+	     var forNum = d3.format(".3f")
+
 	     var container = d3.select("body")
 			       .append("svg")
 			       .attr("width", width + margin.left + margin.right)
 			       .attr("height", height + margin.top + margin.bottom)
 			       .append("g")
-			       .attr("transform", "translate(" + margin.left + width / 2 + "," + margin.top + height / 2 ")");
+			       .attr("transform", function () {
+				   var gwidth = margin.left + width / 2;
+				   var gheight = margin.top + height / 2;
 
-	     var linefunction = d3.svg.
-	     var line1 = container.selectAll("path")
-				  .data(data)
-				  .enter()
-				  .append("path")
-	     .attr
+				   return "translate(" + gwidth + "," + gheight + ")";
+			       });
+	     
+	     var line = container.selectAll("path")
+				 .data(data)
+				 .enter()
+				 .append("path")
+				 .attr("class", "sent")
+				 .style("stroke", "black")
+				 .style("stroke-width", "1")
+				 .style("fill", function (d) {
+				     return polColor(d.tip_pol);
+				 })
+				 .style("fill-opacity", 0.125)
+				 .attr("d", function (d) {
+				     var degreemid = polScale(d.tip_pol)
+				     var degree0 = polScale(d.tip_pol) - Math.PI / 60;
+				     var degree1 = polScale(d.tip_pol) + Math.PI / 60;
+				     var ampl = subScale(d.tip_sub);
+				     
+				     return [ "M", [ 0, 0 ],
+					      "L", [ ampl * Math.cos(degree0), ampl * Math.sin(degree0) ],
+					      "Q", [ ampl * 1.0125 * Math.cos(degreemid), ampl * 1.0125 * Math.sin(degreemid), ampl * Math.cos(degree1), ampl * Math.sin(degree1) ],
+					      "Z"
+				     ].join(' ')
+				 })
+				 .append("title")
+				 .text(function (d) {
+				     return d.tip + "\nPolarity: " + forNum(d.tip_pol) + "\nSubjectivity: " + forNum(d.tip_sub);
+				 });
+
+	     //Title
+	     var title = container.append("text")
+				  .attr("x", 0)
+				  .attr("y", -height / 2.5)
+				  .attr("text-anchor", "middle")
+				  .style("font-size", margin.top / 4 + "px")
+				  .style("font-family", "sans-serif")
+				  .text("Tip Sentiment");
+	     
+	 });
+	 
+	 d3.csv("resources/tfTipShort.csv", function (d) {
+	     return { words: d.words,
+		      tfidf: d.tfidf
+	     };
+	 }).then(function (data) {
+
+	     //Scale for horizontal position of bars
+	     var xScale = d3.scaleBand()
+			    .domain(data.map(function (d) {
+				return d.words;
+			    }))
+			    .range([0, width])
+			    .padding(0.1);
+
+	     //Scale for bar height
+	     var yScale = d3.scaleLinear()
+			    .domain([0, d3.max(data, function (d) { return d.tfidf; })])
+			    .range([0, height / 2]);
+
+	     //Format tooltip numbers
+	     var forNum = d3.format(".2f")
+	     
+	     var container = d3.select("body")
+			       .append("svg")
+			       .attr("width", width + margin.left + margin.right)
+			       .attr("height", height / 2 + margin.top + margin.bottom)
+			       .append("g")
+			       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	     var rect = container.selectAll("rect")
+				 .data(data)
+				 .enter()
+				 .append("rect")
+				 .attr("fill", "#2c7fb8")
+				 .attr("x", function (d) {
+				     return xScale(d.words);
+				 })
+				 .attr("y", function (d) {
+				     return height / 2- yScale(d.tfidf);
+				 })
+				 .attr("width", xScale.bandwidth())
+				 .attr("height", function (d) {
+				     return yScale(d.tfidf);
+				 })
+				 .on("mouseover", function () {
+				     d3.select(this)
+				       .attr("fill", "orange");
+				 })
+				 .on("mouseout", function () {
+				     d3.select(this)
+				       .attr("fill", "#2c7fb8");
+				 })
+				 .append("title")
+				 .text(function (d) {
+				     return d.words + "\nTF-IDF: " + forNum(d.tfidf);
+				 });
+
+	     //X axis
+	     container.append("g")
+		      .attr("class", "xaxis")
+		      .attr("transform", "translate(0," + height / 2 + ")")
+		      .call(d3.axisBottom(xScale))
+		      .selectAll("text")
+		      .attr("x", margin.bottom / 10)
+		      .attr("y", margin.bottom / 16)
+		      .attr("transform", "rotate(45)")
+		      .attr("text-anchor", "start");
+
+	     
+	     //Title
+	     var title = container.append("text")
+				  .attr("x", width / 2)
+				  .attr("y", -margin.top / 2)
+				  .attr("text-anchor", "middle")
+				  .style("font-size", margin.top / 4 + "px")
+				  .style("font-family", "sans-serif")
+				  .text("Tip TF-IDF");
+	 });
+	</script>
+	
+	<script type="text/javascript">
+
+	 //Display specs
+	 var margin = {top: 75, right: 50, bottom: 75, left: 50};
+	 var width = window.innerWidth - margin.left - margin.right;
+	 var height = window.innerHeight - margin.top - margin.bottom;
+
+	 d3.csv("resources/sentMotivation.csv", function (d) {
+	     return { motivation: d.motivation,
+		      motivation_pr: d.motivation_pr,
+		      motivation_pol: d.motivation_pol,
+		      motivation_sub: d.motivation_sub
+	     };
+	 }).then(function (data) {
+
+	     //Scale for subjectivity to degree radians
+	     var polScale = d3.scaleLinear()
+			      .domain([-1, 1])
+			      .range([0, Math.PI * 2]);
+
+	     //Scale for polarity to height
+	     var subScale = d3.scaleLinear()
+			      .domain([0, 1])
+			      .range([0, height / 3]);
+
+	     //Scale for subjectivity to color [double encoding]
+	     var polColor = d3.scaleSequential(d3.interpolateInferno)
+			      .domain([-1, 1]);
+
+	     //Format tooltip numbers
+	     var forNum = d3.format(".3f")
+
+	     var container = d3.select("body")
+			       .append("svg")
+			       .attr("width", width + margin.left + margin.right)
+			       .attr("height", height + margin.top + margin.bottom)
+			       .append("g")
+			       .attr("transform", function () {
+				   var gwidth = margin.left + width / 2;
+				   var gheight = margin.top + height / 2;
+
+				   return "translate(" + gwidth + "," + gheight + ")";
+			       });
+	     
+	     var line = container.selectAll("path")
+				 .data(data)
+				 .enter()
+				 .append("path")
+				 .attr("class", "sent")
+				 .style("stroke", "black")
+				 .style("stroke-width", "1")
+				 .style("fill", function (d) {
+				     return polColor(d.motivation_pol);
+				 })
+				 .style("fill-opacity", 0.125)
+				 .attr("d", function (d) {
+				     var degreemid = polScale(d.motivation_pol)
+				     var degree0 = polScale(d.motivation_pol) - Math.PI / 60;
+				     var degree1 = polScale(d.motivation_pol) + Math.PI / 60;
+				     var ampl = subScale(d.motivation_sub);
+				     
+				     return [ "M", [ 0, 0 ],
+					      "L", [ ampl * Math.cos(degree0), ampl * Math.sin(degree0) ],
+					      "Q", [ ampl * 1.0125 * Math.cos(degreemid), ampl * 1.0125 * Math.sin(degreemid), ampl * Math.cos(degree1), ampl * Math.sin(degree1) ],
+					      "Z"
+				     ].join(' ')
+				 })
+				 .append("title")
+				 .text(function (d) {
+				     return d.motivation + "\nPolarity: " + forNum(d.motivation_pol) + "\nSubjectivity: " + forNum(d.motivation_sub);
+				 });
+
+	     //Title
+	     var title = container.append("text")
+				  .attr("x", 0)
+				  .attr("y", -height / 2.5)
+				  .attr("text-anchor", "middle")
+				  .style("font-size", margin.top / 4 + "px")
+				  .style("font-family", "sans-serif")
+				  .text("Motivation Sentiment");
 	     
 	 });
 
-	 //'Polar' coordinate system with sent as degree and pol as height, or switch?
-	 //pol in [-1, 1], subj in [0, 1]
-	 // (0, 0) to (subscale - pi/64, polscale) arc to (subscale + pi/64, polscale)
-	 //tf-idf bar chart?
+	 
+	 d3.csv("resources/tfMotivationShort.csv", function (d) {
+	     return { words: d.words,
+		      tfidf: d.tfidf
+	     };
+	 }).then(function (data) {
+
+	     //Scale for horizontal position of bars
+	     var xScale = d3.scaleBand()
+			    .domain(data.map(function (d) {
+				return d.words;
+			    }))
+			    .range([0, width])
+			    .padding(0.1);
+
+	     //Scale for bar height
+	     var yScale = d3.scaleLinear()
+			    .domain([0, d3.max(data, function (d) { return d.tfidf; })])
+			    .range([0, height / 2]);
+
+	     //Format tooltip numbers
+	     var forNum = d3.format(".2f")
+	     
+	     var container = d3.select("body")
+			       .append("svg")
+			       .attr("width", width + margin.left + margin.right)
+			       .attr("height", height / 2 + margin.top + margin.bottom)
+			       .append("g")
+			       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	     var rect = container.selectAll("rect")
+				 .data(data)
+				 .enter()
+				 .append("rect")
+				 .attr("fill", "#2c7fb8")
+				 .attr("x", function (d) {
+				     return xScale(d.words);
+				 })
+				 .attr("y", function (d) {
+				     return height / 2- yScale(d.tfidf);
+				 })
+				 .attr("width", xScale.bandwidth())
+				 .attr("height", function (d) {
+				     return yScale(d.tfidf);
+				 })
+				 .on("mouseover", function () {
+				     d3.select(this)
+				       .attr("fill", "orange");
+				 })
+				 .on("mouseout", function () {
+				     d3.select(this)
+				       .attr("fill", "#2c7fb8");
+				 })
+				 .append("title")
+				 .text(function (d) {
+				     return d.words + "\nTF-IDF: " + forNum(d.tfidf);
+				 });
+
+	     //X axis
+	     container.append("g")
+		      .attr("class", "xaxis")
+		      .attr("transform", "translate(0," + height / 2 + ")")
+		      .call(d3.axisBottom(xScale))
+		      .selectAll("text")
+		      .attr("x", margin.bottom / 10)
+		      .attr("y", margin.bottom / 16)
+		      .attr("transform", "rotate(45)")
+		      .attr("text-anchor", "start");
+
+	     
+	     //Title
+	     var title = container.append("text")
+				  .attr("x", width / 2)
+				  .attr("y", -margin.top / 2)
+				  .attr("text-anchor", "middle")
+				  .style("font-size", margin.top / 4 + "px")
+				  .style("font-family", "sans-serif")
+				  .text("Motivation TF-IDF");
+	 });
+	</script>
+	
+	<script type="text/javascript">
+
+	 //Display specs
+	 var margin = {top: 75, right: 50, bottom: 75, left: 50};
+	 var width = window.innerWidth - margin.left - margin.right;
+	 var height = window.innerHeight - margin.top - margin.bottom;
+
+	 d3.csv("resources/sentDie.csv", function (d) {
+	     return { die: d.die,
+		      die_pr: d.die_pr,
+		      die_pol: d.die_pol,
+		      die_sub: d.die_sub
+	     };
+	 }).then(function (data) {
+
+	     //Scale for subjectivity to degree radians
+	     var polScale = d3.scaleLinear()
+			      .domain([-1, 1])
+			      .range([0, Math.PI * 2]);
+
+	     //Scale for polarity to height
+	     var subScale = d3.scaleLinear()
+			      .domain([0, 1])
+			      .range([0, height / 3]);
+
+	     //Scale for subjectivity to color [double encoding]
+	     var polColor = d3.scaleSequential(d3.interpolateInferno)
+			      .domain([-1, 1]);
+
+	     //Format tooltip numbers
+	     var forNum = d3.format(".3f")
+
+	     var container = d3.select("body")
+			       .append("svg")
+			       .attr("width", width + margin.left + margin.right)
+			       .attr("height", height + margin.top + margin.bottom)
+			       .append("g")
+			       .attr("transform", function () {
+				   var gwidth = margin.left + width / 2;
+				   var gheight = margin.top + height / 2;
+
+				   return "translate(" + gwidth + "," + gheight + ")";
+			       });
+	     
+	     var line = container.selectAll("path")
+				 .data(data)
+				 .enter()
+				 .append("path")
+				 .attr("class", "sent")
+				 .style("stroke", "black")
+				 .style("stroke-width", "1")
+				 .style("fill", function (d) {
+				     return polColor(d.die_pol);
+				 })
+				 .style("fill-opacity", 0.125)
+				 .attr("d", function (d) {
+				     var degreemid = polScale(d.die_pol)
+				     var degree0 = polScale(d.die_pol) - Math.PI / 60;
+				     var degree1 = polScale(d.die_pol) + Math.PI / 60;
+				     var ampl = subScale(d.die_sub);
+				     
+				     return [ "M", [ 0, 0 ],
+					      "L", [ ampl * Math.cos(degree0), ampl * Math.sin(degree0) ],
+					      "Q", [ ampl * 1.0125 * Math.cos(degreemid), ampl * 1.0125 * Math.sin(degreemid), ampl * Math.cos(degree1), ampl * Math.sin(degree1) ],
+					      "Z"
+				     ].join(' ')
+				 })
+				 .append("title")
+				 .text(function (d) {
+				     return d.die + "\nPolarity: " + forNum(d.die_pol) + "\nSubjectivity: " + forNum(d.die_sub);
+				 });
+
+	     //Title
+	     var title = container.append("text")
+				  .attr("x", 0)
+				  .attr("y", -height / 2.5)
+				  .attr("text-anchor", "middle")
+				  .style("font-size", margin.top / 4 + "px")
+				  .style("font-family", "sans-serif")
+				  .text("Die Sentiment");
+	     
+	 });
+
+	 
+	 d3.csv("resources/tfDieShort.csv", function (d) {
+	     return { words: d.words,
+		      tfidf: d.tfidf
+	     };
+	 }).then(function (data) {
+
+	     //Scale for horizontal position of bars
+	     var xScale = d3.scaleBand()
+			    .domain(data.map(function (d) {
+				return d.words;
+			    }))
+			    .range([0, width])
+			    .padding(0.1);
+
+	     //Scale for bar height
+	     var yScale = d3.scaleLinear()
+			    .domain([0, d3.max(data, function (d) { return d.tfidf; })])
+			    .range([0, height / 2]);
+
+	     //Format tooltip numbers
+	     var forNum = d3.format(".2f")
+	     
+	     var container = d3.select("body")
+			       .append("svg")
+			       .attr("width", width + margin.left + margin.right)
+			       .attr("height", height / 2 + margin.top + margin.bottom)
+			       .append("g")
+			       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	     var rect = container.selectAll("rect")
+				 .data(data)
+				 .enter()
+				 .append("rect")
+				 .attr("fill", "#2c7fb8")
+				 .attr("x", function (d) {
+				     return xScale(d.words);
+				 })
+				 .attr("y", function (d) {
+				     return height / 2- yScale(d.tfidf);
+				 })
+				 .attr("width", xScale.bandwidth())
+				 .attr("height", function (d) {
+				     return yScale(d.tfidf);
+				 })
+				 .on("mouseover", function () {
+				     d3.select(this)
+				       .attr("fill", "orange");
+				 })
+				 .on("mouseout", function () {
+				     d3.select(this)
+				       .attr("fill", "#2c7fb8");
+				 })
+				 .append("title")
+				 .text(function (d) {
+				     return d.words + "\nTF-IDF: " + forNum(d.tfidf);
+				 });
+
+	     //X axis
+	     container.append("g")
+		      .attr("class", "xaxis")
+		      .attr("transform", "translate(0," + height / 2 + ")")
+		      .call(d3.axisBottom(xScale))
+		      .selectAll("text")
+		      .attr("x", margin.bottom / 10)
+		      .attr("y", margin.bottom / 16)
+		      .attr("transform", "rotate(45)")
+		      .attr("text-anchor", "start");
+
+	     
+	     //Title
+	     var title = container.append("text")
+				  .attr("x", width / 2)
+				  .attr("y", -margin.top / 2)
+				  .attr("text-anchor", "middle")
+				  .style("font-size", margin.top / 4 + "px")
+				  .style("font-family", "sans-serif")
+				  .text("Die TF-IDF");
+	 });
 	</script>
     </body>
 </html>
