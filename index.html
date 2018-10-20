@@ -5,178 +5,216 @@
 	<title>Travel Survey</title>
 	<script src="d3/d3.js" charset="utf-8"></script>
 	<style>
-	    p {
-	    font-family: sans-serif
-	    }
+	 .div {
+	     position: relative;
+	 }
+	 .title {
+	     font-size: 20px;
+	     font-weight: bold;
+	 }
+	 p {
+	     font-family: sans-serif;
+	 }
+	 ul {
+	     font-family: sans-serif;
+	 }
 	</style>
     </head>
     <body>
-	<p>Natural Language Processing on the results of the r/travel subscriber survey</p>
-	<p><a href="https://www.reddit.com/comments/99foe4" target="_blank">Survey data</a> and <a href="https://github.com/Ecboxer/travel" target="_blank">Github repo</a></p>
-	<p>Descriptions!</p>
-	    <script type="text/javascript">
+	<p class="title">Natural Language Processing on the results of the r/travel subscriber survey</p>
+	<p class="data"><a href="https://www.reddit.com/comments/99foe4" target="_blank">Source data</a> and <a href="https://github.com/Ecboxer/travel" target="_blank">Github repo</a></p>
+	<div>
+	    <p>The subreddit r/travel's commemorative 1,000,000<sup>th</sup> subscriber survey had "only" 858 responses but with 100 features it made for some interesting exploratory data analysis.</p>
+	    <img src="resources/agecount.png">
+	    <p>Unsurprisingly, for an internet forum, the most populous age category was 22-29 year olds (note the age categories were not of equal range!). The approximate average age of respondents was 29 years old. We don't just have data from kids here, although there are a fair few teens in the data.</p>
+	    <img src="resources/educationcount.png">
+	    <p>This is a well-educated bunch of travellers. The difference between "College" and "Bachelor" is not clear to me, but with the inclusion of "Tradeschool" I suppose there is a distinction between the level of educational institution as well as between those who completed degrees and those who dropped out.</p>
+	    <img src="resources/tripsPerYear.png">
+	    <p>This is called a kernel density plot, you can think of it as a representation of the relative frequency of values. We can see that most respondents go for somewhere around three trips each year. There are a few people going for so many trips that they decided to just round to 30 or 40 rather than figure out the exact number. There is a similar phenomenon with the days spent travelling each year (see below)</p>
+	    <img src="resources/daysPerYear.png">
+	</div>
+	<div>
+	    <p><b>Here are some quick stats for context:</b></p>
+	    <ul>Respondents were 63% male and 37% female</ul>
+	    <ul>50% are of American nationality, followed by 9% Canadian and 7% British</ul>
+	    <ul>565 respondents chose "Full-time" as their employment status, but note that there was no "Student" option</ul>
+	    <ul></ul>
+	</div>
+	<div>
+	    <p>Now we get to the fun open-ended questions with unstructured data. I chose three in particular for visualizations: "In 10 words or less, what is your best travel tip?", "What motivates you to travel?" and "What is the one thing you recommend people have to do/see before they die?"</p>
+	    <p>For each question, I ran a sentiment analysis to calculate the polarity (defined as negative vs positive) and subjectivity (defined as objective vs subjective) of the responses. Sentiment is presented in a polar coordinate bar chart with subjectivity encoded by height and subjectivity double encoded by degree and color. Hovering over a bar reveals the sentiment scores and the original response.</p>
+	    <p>The sentiment scores are fun if only for how easily we can follow the algorithm's logic from the results. For example, judged as least polarizing are "Don't take checked in luggage if possible" (check and possible), "Be curious" (curious), and "Expect the Unexpected" (expected and unepected) in which the words used by the analysis really jump out. My favorite artifact is the concentration of "Grand Canyon" responses at high subjectivity.</p>
+	    <p>In addition to the sentiment, I ran an analysis called term frequency-inverse document frequency (TF-IDF). After removing stop words (words without semantic value such as "and", "so", "to"), we calculate the number of times each word appears in the data (term frequency). We than multiply by a measure of the meaningfulness of the word (inverse document frequency), which gives more weight to rare words. You can read more about TF-IDF <a href="http://www.tfidf.com/" target="_blank">here</a>.</p>
+	    <p>Here I have shown the twenty highest TF-IDF values for each question. Since TF-IDF is a relative measure the exact value is not as meaningful as the comparison between words, but you can look at the values by hovering over each bar. I think the most interesting feature is the prevalence of "culture" and "new" in responses for travel motivation and the lack of any dominant words in the responses for things to do before you die.</p>
+	</div>
+	<div id="areaTip"></div>
+	<div id="areaTip1"></div>
+	<div id="areaMotivation"></div>
+	<div id="areaMotivation1"></div>
+	<div id="areaDie"></div>
+	<div id="areaDie1"></div>
+	<script type="text/javascript">
 
-	     //Display specs
-	     var margin = {top: 75, right: 50, bottom: 75, left: 50};
-	     var width = window.innerWidth - margin.left - margin.right;
-	     var height = window.innerHeight - margin.top - margin.bottom;
+	 //Display specs
+	 var margin = {top: 75, right: 50, bottom: 75, left: 50};
+	 var width = window.innerWidth - margin.left - margin.right;
+	 var height = window.innerHeight - margin.top - margin.bottom;
 
-	     d3.csv("resources/sentTip.csv", function (d) {
-		 return { tip: d.tip,
-			  tip_pr: d.tip_pr,
-			  tip_pol: d.tip_pol,
-			  tip_sub: d.tip_sub
-		 };
-	     }).then(function (data) {
+	 d3.csv("resources/sentTip.csv", function (d) {
+	     return { tip: d.tip,
+		      tip_pr: d.tip_pr,
+		      tip_pol: d.tip_pol,
+		      tip_sub: d.tip_sub
+	     };
+	 }).then(function (data) {
 
-		 //Scale for subjectivity to degree radians
-		 var polScale = d3.scaleLinear()
-				  .domain([-1, 1])
-				  .range([0, Math.PI * 2]);
+	     //Scale for subjectivity to degree radians
+	     var polScale = d3.scaleLinear()
+			      .domain([-1, 1])
+			      .range([0, Math.PI * 2]);
 
-		 //Scale for polarity to height
-		 var subScale = d3.scaleLinear()
-				  .domain([0, 1])
-				  .range([0, height / 3]);
+	     //Scale for polarity to height
+	     var subScale = d3.scaleLinear()
+			      .domain([0, 1])
+			      .range([0, height / 3]);
 
-		 //Scale for subjectivity to color [double encoding]
-		 var polColor = d3.scaleSequential(d3.interpolateInferno)
-				  .domain([-1, 1]);
+	     //Scale for subjectivity to color [double encoding]
+	     var polColor = d3.scaleSequential(d3.interpolateInferno)
+			      .domain([-1, 1]);
 
-		 //Format tooltip numbers
-		 var forNum = d3.format(".3f")
+	     //Format tooltip numbers
+	     var forNum = d3.format(".3f")
 
-		 var container = d3.select("body")
-				   .append("svg")
-				   .attr("width", width + margin.left + margin.right)
-				   .attr("height", height + margin.top + margin.bottom)
-				   .append("g")
-				   .attr("transform", function () {
-				       var gwidth = margin.left + width / 2;
-				       var gheight = margin.top + height / 2;
+	     var container = d3.select("#areaTip")
+			       .append("svg")
+			       .attr("width", width + margin.left + margin.right)
+			       .attr("height", height + margin.top + margin.bottom)
+			       .append("g")
+			       .attr("transform", function () {
+				   var gwidth = margin.left + width / 2;
+				   var gheight = margin.top + height / 2;
 
-				       return "translate(" + gwidth + "," + gheight + ")";
-				   });
-		 
-		 var line = container.selectAll("path")
-				     .data(data)
-				     .enter()
-				     .append("path")
-				     .attr("class", "sent")
-				     .style("stroke", "black")
-				     .style("stroke-width", "1")
-				     .style("fill", function (d) {
-					 return polColor(d.tip_pol);
-				     })
-				     .style("fill-opacity", 0.125)
-				     .attr("d", function (d) {
-					 var degreemid = polScale(d.tip_pol)
-					 var degree0 = polScale(d.tip_pol) - Math.PI / 60;
-					 var degree1 = polScale(d.tip_pol) + Math.PI / 60;
-					 var ampl = subScale(d.tip_sub);
-					 
-					 return [ "M", [ 0, 0 ],
-						  "L", [ ampl * Math.cos(degree0), ampl * Math.sin(degree0) ],
-						  "Q", [ ampl * 1.0125 * Math.cos(degreemid), ampl * 1.0125 * Math.sin(degreemid), ampl * Math.cos(degree1), ampl * Math.sin(degree1) ],
-						  "Z"
-					 ].join(' ')
-				     })
-				     .append("title")
-				     .text(function (d) {
-					 return d.tip + "\nPolarity: " + forNum(d.tip_pol) + "\nSubjectivity: " + forNum(d.tip_sub);
-				     });
-
-		 //Title
-		 var title = container.append("text")
-				      .attr("x", 0)
-				      .attr("y", -height / 2.5)
-				      .attr("text-anchor", "middle")
-				      .style("font-size", margin.top / 4 + "px")
-				      .style("font-family", "sans-serif")
-				      .text("Tip Sentiment");
-		 
-	     });
+				   return "translate(" + gwidth + "," + gheight + ")";
+			       });
 	     
-	     d3.csv("resources/tfTipShort.csv", function (d) {
-		 return { words: d.words,
-			  tfidf: d.tfidf
-		 };
-	     }).then(function (data) {
+	     var line = container.selectAll("path")
+				 .data(data)
+				 .enter()
+				 .append("path")
+				 .attr("class", "sent")
+				 .style("stroke", "black")
+				 .style("stroke-width", "1px")
+				 .style("fill", function (d) {
+				     return polColor(d.tip_pol);
+				 })
+				 .style("fill-opacity", 0.125)
+				 .attr("d", function (d) {
+				     var degreemid = polScale(d.tip_pol)
+				     var degree0 = polScale(d.tip_pol) - Math.PI / 60;
+				     var degree1 = polScale(d.tip_pol) + Math.PI / 60;
+				     var ampl = subScale(d.tip_sub);
+				     
+				     return [ "M", [ 0, 0 ],
+					      "L", [ ampl * Math.cos(degree0), ampl * Math.sin(degree0) ],
+					      "Q", [ ampl * 1.0125 * Math.cos(degreemid), ampl * 1.0125 * Math.sin(degreemid), ampl * Math.cos(degree1), ampl * Math.sin(degree1) ],
+					      "Z"
+				     ].join(' ')
+				 })
+				 .append("title")
+				 .text(function (d) {
+				     return d.tip + "\nPolarity: " + forNum(d.tip_pol) + "\nSubjectivity: " + forNum(d.tip_sub);
+				 });
 
-		 //Scale for horizontal position of bars
-		 var xScale = d3.scaleBand()
-				.domain(data.map(function (d) {
-				    return d.words;
-				}))
-				.range([0, width])
-				.padding(0.1);
+	     //Title
+	     var title = container.append("text")
+				  .attr("x", 0)
+				  .attr("y", -height / 2.5)
+				  .attr("text-anchor", "middle")
+				  .style("font-size", margin.top / 4 + "px")
+				  .style("font-family", "sans-serif")
+				  .text("Travel Tip Sentiment");
+	     
+	 });
+	 
+	 d3.csv("resources/tfTipShort.csv", function (d) {
+	     return { words: d.words,
+		      tfidf: d.tfidf
+	     };
+	 }).then(function (data) {
 
-		 //Scale for bar height
-		 var yScale = d3.scaleLinear()
-				.domain([0, d3.max(data, function (d) { return d.tfidf; })])
-				.range([0, height / 2]);
+	     //Scale for horizontal position of bars
+	     var xScale = d3.scaleBand()
+			    .domain(data.map(function (d) {
+				return d.words;
+			    }))
+			    .range([0, width])
+			    .padding(0.1);
 
-		 //Format tooltip numbers
-		 var forNum = d3.format(".2f")
-		 
-		 var container = d3.select("body")
-				   .append("svg")
-				   .attr("width", width + margin.left + margin.right)
-				   .attr("height", height / 2 + margin.top + margin.bottom)
-				   .append("g")
-				   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+	     //Scale for bar height
+	     var yScale = d3.scaleLinear()
+			    .domain([0, d3.max(data, function (d) { return d.tfidf; })])
+			    .range([0, height / 2]);
 
-		 var rect = container.selectAll("rect")
-				     .data(data)
-				     .enter()
-				     .append("rect")
-				     .attr("fill", "#2c7fb8")
-				     .attr("x", function (d) {
-					 return xScale(d.words);
-				     })
-				     .attr("y", function (d) {
-					 return height / 2- yScale(d.tfidf);
-				     })
-				     .attr("width", xScale.bandwidth())
-				     .attr("height", function (d) {
-					 return yScale(d.tfidf);
-				     })
-				     .on("mouseover", function () {
-					 d3.select(this)
-					   .attr("fill", "orange");
-				     })
-				     .on("mouseout", function () {
-					 d3.select(this)
-					   .attr("fill", "#2c7fb8");
-				     })
-				     .append("title")
-				     .text(function (d) {
-					 return d.words + "\nTF-IDF: " + forNum(d.tfidf);
-				     });
+	     //Format tooltip numbers
+	     var forNum = d3.format(".2f")
+	     
+	     var container = d3.select("#areaTip1")
+			       .append("svg")
+			       .attr("width", width + margin.left + margin.right)
+			       .attr("height", height / 2 + margin.top + margin.bottom)
+			       .append("g")
+			       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-		 //X axis
-		 container.append("g")
-			  .attr("class", "xaxis")
-			  .attr("transform", "translate(0," + height / 2 + ")")
-			  .call(d3.axisBottom(xScale))
-			  .selectAll("text")
-			  .attr("x", margin.bottom / 10)
-			  .attr("y", margin.bottom / 16)
-			  .attr("transform", "rotate(45)")
-			  .attr("text-anchor", "start");
+	     var rect = container.selectAll("rect")
+				 .data(data)
+				 .enter()
+				 .append("rect")
+				 .attr("fill", "#2c7fb8")
+				 .attr("x", function (d) {
+				     return xScale(d.words);
+				 })
+				 .attr("y", function (d) {
+				     return height / 2- yScale(d.tfidf);
+				 })
+				 .attr("width", xScale.bandwidth())
+				 .attr("height", function (d) {
+				     return yScale(d.tfidf);
+				 })
+				 .on("mouseover", function () {
+				     d3.select(this)
+				       .attr("fill", "orange");
+				 })
+				 .on("mouseout", function () {
+				     d3.select(this)
+				       .attr("fill", "#2c7fb8");
+				 })
+				 .append("title")
+				 .text(function (d) {
+				     return d.words + "\nTF-IDF: " + forNum(d.tfidf);
+				 });
 
-		 
-		 //Title
-		 var title = container.append("text")
-				      .attr("x", width / 2)
-				      .attr("y", -margin.top / 2)
-				      .attr("text-anchor", "middle")
-				      .style("font-size", margin.top / 4 + "px")
-				      .style("font-family", "sans-serif")
-				      .text("Tip TF-IDF");
-	     });
-	    </script>
-	
+	     //X axis
+	     container.append("g")
+		      .attr("class", "xaxis")
+		      .attr("transform", "translate(0," + height / 2 + ")")
+		      .call(d3.axisBottom(xScale))
+		      .selectAll("text")
+		      .attr("x", margin.bottom / 10)
+		      .attr("y", margin.bottom / 16)
+		      .attr("transform", "rotate(45)")
+		      .attr("text-anchor", "start");
+
+	     
+	     //Title
+	     var title = container.append("text")
+				  .attr("x", width / 2)
+				  .attr("y", -margin.top / 2)
+				  .attr("text-anchor", "middle")
+				  .style("font-size", margin.top / 4 + "px")
+				  .style("font-family", "sans-serif")
+				  .text("Travel Tip TF-IDF");
+	 });
+	</script>
 	<script type="text/javascript">
 
 	 //Display specs
@@ -209,7 +247,7 @@
 	     //Format tooltip numbers
 	     var forNum = d3.format(".3f")
 
-	     var container = d3.select("body")
+	     var container = d3.select("#areaMotivation")
 			       .append("svg")
 			       .attr("width", width + margin.left + margin.right)
 			       .attr("height", height + margin.top + margin.bottom)
@@ -256,7 +294,7 @@
 				  .attr("text-anchor", "middle")
 				  .style("font-size", margin.top / 4 + "px")
 				  .style("font-family", "sans-serif")
-				  .text("Motivation Sentiment");
+				  .text("Motivation for Travel Sentiment");
 	     
 	 });
 
@@ -283,7 +321,7 @@
 	     //Format tooltip numbers
 	     var forNum = d3.format(".2f")
 	     
-	     var container = d3.select("body")
+	     var container = d3.select("#areaMotivation1")
 			       .append("svg")
 			       .attr("width", width + margin.left + margin.right)
 			       .attr("height", height / 2 + margin.top + margin.bottom)
@@ -337,10 +375,9 @@
 				  .attr("text-anchor", "middle")
 				  .style("font-size", margin.top / 4 + "px")
 				  .style("font-family", "sans-serif")
-				  .text("Motivation TF-IDF");
+				  .text("Motivation for Travel TF-IDF");
 	 });
 	</script>
-	
 	<script type="text/javascript">
 
 	 //Display specs
@@ -373,7 +410,7 @@
 	     //Format tooltip numbers
 	     var forNum = d3.format(".3f")
 
-	     var container = d3.select("body")
+	     var container = d3.select("#areaDie")
 			       .append("svg")
 			       .attr("width", width + margin.left + margin.right)
 			       .attr("height", height + margin.top + margin.bottom)
@@ -420,7 +457,7 @@
 				  .attr("text-anchor", "middle")
 				  .style("font-size", margin.top / 4 + "px")
 				  .style("font-family", "sans-serif")
-				  .text("Die Sentiment");
+				  .text("Before you Die Sentiment");
 	     
 	 });
 
@@ -447,7 +484,7 @@
 	     //Format tooltip numbers
 	     var forNum = d3.format(".2f")
 	     
-	     var container = d3.select("body")
+	     var container = d3.select("#areaDie1")
 			       .append("svg")
 			       .attr("width", width + margin.left + margin.right)
 			       .attr("height", height / 2 + margin.top + margin.bottom)
@@ -501,7 +538,7 @@
 				  .attr("text-anchor", "middle")
 				  .style("font-size", margin.top / 4 + "px")
 				  .style("font-family", "sans-serif")
-				  .text("Die TF-IDF");
+				  .text("Before you Die TF-IDF");
 	 });
 	</script>
     </body>
